@@ -1082,9 +1082,9 @@
     <div class="action-card" id="ac-camera" onclick="doAction('camera')">
       <div class="action-header">
         <div class="action-name">📷 Watch Camera</div>
-        <div class="action-cost free">FREE</div>
+        <div class="action-cost">+2 Power</div>
       </div>
-      <div class="action-desc">FREEZE an animatronic this turn. If they would have moved, their personality is revealed instead. West = Bonnie. East = Chica &amp; Freddy.</div>
+      <div class="action-desc">FREEZE an animatronic this turn (+2 drain). If they would have moved, their personality is revealed instead. Keeps Foxy at bay. West = Bonnie. East = Chica &amp; Freddy.</div>
       <div class="corridor-picker" id="cam-picker">
         <button class="corr-btn" onclick="event.stopPropagation(); pickCorridor('west')">WEST<br>(Bonnie)</button>
         <button class="corr-btn" onclick="event.stopPropagation(); pickCorridor('east')">EAST<br>(Chica/Freddy)</button>
@@ -1095,9 +1095,9 @@
     <div class="action-card" id="ac-pirate" onclick="doAction('pirate')">
       <div class="action-header">
         <div class="action-name">🦜 Watch Pirate Cove</div>
-        <div class="action-cost">−1 Power</div>
+        <div class="action-cost">+1 Power</div>
       </div>
-      <div class="action-desc">Resets Foxy's Danger Counter to 0. Does NOT reveal other animatronics.</div>
+      <div class="action-desc">Resets Foxy's Danger Counter to 0 (+1 drain this turn). Keeps Foxy at bay. Does NOT freeze or reveal other animatronics.</div>
     </div>
 
     <div class="action-card" id="ac-light" onclick="doAction('light')">
@@ -1105,7 +1105,7 @@
         <div class="action-name">🔦 Use Hall Light</div>
         <div class="action-cost free">FREE</div>
       </div>
-      <div class="action-desc">Peek at a Warning Zone. Prevents camera/cove check this turn. No power cost.</div>
+      <div class="action-desc">Peek at a Warning Zone. Keeps Foxy at bay. Prevents camera/cove check this turn. No power cost.</div>
       <div class="corridor-picker" id="light-picker">
         <button class="corr-btn" onclick="event.stopPropagation(); pickLight('west')">LEFT HALL</button>
         <button class="corr-btn" onclick="event.stopPropagation(); pickLight('east')">RIGHT HALL</button>
@@ -1117,7 +1117,7 @@
         <div class="action-name">⏸ Wait & Watch</div>
         <div class="action-cost free">FREE</div>
       </div>
-      <div class="action-desc">Take no action this turn. Save power. Foxy counter +1. Risk escalates. No freeze on any animatronic.</div>
+      <div class="action-desc">Take no action this turn. Save power. Only action that advances Foxy's counter (+1, or +2 if Restless). Risk escalates.</div>
     </div>
 
     <div class="tc" style="margin-top: auto;">
@@ -1219,7 +1219,6 @@ playSound('snd-bgmusic');
     foxyCounter: 0,
     foxyBlocks: 0,
     positions: { bonnie: 0, chica: 0, freddy: 0, foxy: 0 },
-    knownPositions: { bonnie: null, chica: null, freddy: null, foxy: null },
     personalities: {
       bonnie: PERSONALITIES[Math.floor(Math.random()*3)],
       chica:  PERSONALITIES[Math.floor(Math.random()*3)],
@@ -1231,7 +1230,9 @@ playSound('snd-bgmusic');
     actionType: null,
     fredFreeze: false,
     lightUsed: false,
+    lightSide: null,
     watchedCorridor: null,
+    actionDrain: 0,
     gameOver: false,
     blackout: false,
     blackoutTurns: 0,
@@ -1272,6 +1273,7 @@ function calcDrain() {
   if (G.doors.left === 'closed') d += 2;
   if (G.doors.right === 'closed') d += 2;
   if (G.doors.left === 'closed' && G.foxyBlocks > 0) d += G.foxyBlocks;
+  d += G.actionDrain;
   return d;
 }
 
@@ -1284,7 +1286,9 @@ function renderPower() {
   bar.style.background = pct > 50 ? '#2f7d32' : pct > 25 ? '#e8b23a' : '#d6362f';
   const drain = calcDrain();
   const strainNote = (G.doors.left === 'closed' && G.foxyBlocks > 0) ? `+${G.foxyBlocks} strain` : '';
-  document.getElementById('drain-preview').textContent = `Drain this turn: −${drain} (base${G.doors.left==='closed'?'+door':''}${G.doors.right==='closed'?'+door':''}${strainNote ? ' '+strainNote : ''})`;
+  const camNote = G.actionDrain > 0 ? `+cam` : '';
+  const drainParts = ['base', G.doors.left==='closed'?'+door':'', G.doors.right==='closed'?'+door':'', strainNote, camNote].filter(Boolean).join('');
+  document.getElementById('drain-preview').textContent = `Drain this turn: −${drain} (${drainParts})`;
 }
 
 function renderDoors() {
@@ -1353,7 +1357,6 @@ function renderTokens() {
 function renderAnimStatus() {
   ['bonnie','chica','freddy','foxy'].forEach(a => {
     const el = document.getElementById('status-' + a);
-    // Tabletop: position is always visible on the board
     const path = PATHS[a];
     const pos = G.positions[a];
     const roomId = path[pos];
@@ -1427,12 +1430,13 @@ function doAction(type) {
     if (G.lightUsed) { showCamResult('❌ Hall light already used — cannot check Pirate Cove this turn.'); return; }
     G.actionTaken = true;
     G.actionType = 'Watch Pirate Cove';
+    G.actionDrain = 1;
     G.foxyCounter = 0;
     addLog('Pirate Cove checked — Foxy counter reset to 0.', 'success');
     playSound('snd-camera');
-    G.knownPositions.foxy = 'pirate';
     showCamResult('🦜 Pirate Cove: Foxy spotted. Counter reset to 0.');
     renderActions();
+    renderPower();
     renderFoxy();
     return;
   }
@@ -1453,16 +1457,14 @@ function pickCorridor(corr) {
   document.getElementById('cam-picker').classList.remove('visible');
   playSound('snd-camera');
 
-  // Camera now FREEZES animatronics in that corridor.
-  // Personality is NOT revealed here — it reveals during the roll phase
-  // only if the animatronic would have moved but was frozen instead.
+  G.actionDrain = 2;
   if (corr === 'west') {
     G.fredFreeze = false;
-    G.watchedCorridor = 'west'; // Bonnie's corridor
+    G.watchedCorridor = 'west'; 
     addLog('📷 Camera [WEST]: Watching Bonnie\'s corridor. She is FROZEN this turn.', 'info');
     showCamResult('📷 WEST CAM: Bonnie frozen. Personality reveals if she would have moved.');
   } else if (corr === 'east') {
-    G.fredFreeze = true;  // East freezes both Chica and Freddy
+    G.fredFreeze = true;  
     G.watchedCorridor = 'east';
     const modOverride = G.nightMod.name === 'Freddy Ignores Cameras';
     if (modOverride) {
@@ -1474,13 +1476,13 @@ function pickCorridor(corr) {
       showCamResult('📷 EAST CAM: Chica & Freddy frozen. Personalities reveal on intercepted move.');
     }
   } else {
-    // Dining camera: freezes all still in Stage/Dining area
     G.watchedCorridor = 'dining';
     addLog('📷 Camera [DINING]: Watching Stage/Dining. Any animatronics there are frozen this turn.', 'info');
     showCamResult('📷 DINING CAM: Stage/Dining area watched. Animatronics there are frozen.');
   }
 
   renderActions();
+  renderPower();
   updateSurvivalOdds();
 }
 
@@ -1489,22 +1491,15 @@ function pickLight(side) {
   G.actionTaken = true;
   G.lightUsed = true;
   G.actionType = 'Hall Light — ' + (side === 'west' ? 'Left' : 'Right');
+  G.lightSide = side; 
   document.getElementById('light-picker').classList.remove('visible');
 
   let animsHere = [];
   if (side === 'west') {
-    if (PATHS.bonnie[G.positions.bonnie] === 'west-warn') {
-      animsHere.push('Bonnie');
-      G.knownPositions.bonnie = 'west-warn';
-      G.revealedPersonalities.bonnie = true;
-    }
+    if (PATHS.bonnie[G.positions.bonnie] === 'west-warn') animsHere.push('Bonnie');
   } else {
     ['chica','freddy'].forEach(a => {
-      if (PATHS[a][G.positions[a]] === 'east-warn') {
-        animsHere.push(a.charAt(0).toUpperCase()+a.slice(1));
-        G.knownPositions[a] = 'east-warn';
-        G.revealedPersonalities[a] = true;
-      }
+      if (PATHS[a][G.positions[a]] === 'east-warn') animsHere.push(a.charAt(0).toUpperCase()+a.slice(1));
     });
   }
 
@@ -1531,7 +1526,7 @@ function endTurn() {
   if (!G.actionTaken || G.gameOver) return;
   document.getElementById('end-turn-btn').disabled = true;
 
-  if (G.actionType !== 'Watch Pirate Cove') {
+  if (G.actionType === 'Wait & Watch') {
     const inc = G.nightMod.name === 'Foxy is Restless' ? 2 : 1;
     G.foxyCounter = Math.min(4, G.foxyCounter + inc);
     addLog(`Foxy counter: ${G.foxyCounter}/4 (unwatched +${inc})`, 'warning');
@@ -1553,20 +1548,25 @@ function endTurn() {
   const threshold = getMoveThreshold(G.turn);
   addLog(`--- Turn ${G.turn} roll phase (move on 1–${threshold}) ---`, '');
 
-  // Determine which animatronics are frozen by camera this turn
   function isFrozen(anim) {
     if (!G.watchedCorridor) return false;
     if (G.watchedCorridor === 'west') return anim === 'bonnie';
     if (G.watchedCorridor === 'east') {
       if (anim === 'chica') return true;
-      if (anim === 'freddy') return G.fredFreeze; // false if night mod overrides
+      if (anim === 'freddy') return G.fredFreeze; 
       return false;
     }
     if (G.watchedCorridor === 'dining') {
-      // Freeze any animatronic currently in stage or dining
       const roomId = PATHS[anim][G.positions[anim]];
       return ['stage','dining'].includes(roomId);
     }
+    return false;
+  }
+
+  function isLightWatched(anim) {
+    if (!G.lightSide) return false;
+    if (G.lightSide === 'west') return anim === 'bonnie' && PATHS.bonnie[G.positions.bonnie] === 'west-warn';
+    if (G.lightSide === 'east') return (anim === 'chica' || anim === 'freddy') && PATHS[anim][G.positions[anim]] === 'east-warn';
     return false;
   }
 
@@ -1578,9 +1578,9 @@ function endTurn() {
     const path = PATHS[anim];
     const currentPos = G.positions[anim];
     const p = G.personalities[anim];
-    const erraticRoll = (p === 'erratic') ? roll() : null;
 
     const r = roll();
+    const erraticRoll = (p === 'erratic') ? roll() : null;
     let effectiveRoll = r;
     if (p === 'erratic') {
       effectiveRoll = G.turn % 2 === 1 ? Math.max(r, erraticRoll) : Math.min(r, erraticRoll);
@@ -1590,7 +1590,6 @@ function endTurn() {
 
     if (frozen) {
       if (wouldHaveMoved) {
-        // Intercept! Personality is revealed as a consequence of the freeze landing on a move
         if (!G.revealedPersonalities[anim]) {
           G.revealedPersonalities[anim] = true;
           const personalityTag = p === 'erratic' ? ` (erratic: ${r},${erraticRoll})` : '';
@@ -1600,16 +1599,27 @@ function endTurn() {
           addLog(`${anim.charAt(0).toUpperCase()+anim.slice(1)}: rolled ${effectiveRoll}${personalityTag} → would have moved but FROZEN by camera. [${p.toUpperCase()} — already known]`, 'info');
         }
       } else {
-        addLog(`${anim.charAt(0).toUpperCase()+anim.slice(1)}: rolled ${effectiveRoll} → frozen by camera but wouldn't have moved anyway.`, 'info');
+        const personalityTag = (G.revealedPersonalities[anim] && p === 'erratic') ? ` (erratic: ${r},${erraticRoll})` : '';
+        addLog(`${anim.charAt(0).toUpperCase()+anim.slice(1)}: rolled ${effectiveRoll}${personalityTag} → frozen by camera but wouldn't have moved anyway.`, 'info');
       }
-      return; // frozen = no movement regardless
+      return; 
     }
 
     if (wouldHaveMoved) {
       G.positions[anim]++;
       const newRoom = path[G.positions[anim]];
-      const personalityTag = p === 'erratic' ? ` (erratic: ${r},${erraticRoll})` : (p === 'aggressive' ? ' +AGRO' : (p === 'cautious' ? ' +CAUT' : ''));
-      addLog(`${anim.charAt(0).toUpperCase()+anim.slice(1)}: rolled ${effectiveRoll}${personalityTag} → moved to ${ROOM_NAMES[newRoom]}`, 'warning');
+
+      if (isLightWatched(anim) && !G.revealedPersonalities[anim]) {
+        G.revealedPersonalities[anim] = true;
+        const personalityTag = p === 'erratic' ? ` (erratic: ${r},${erraticRoll})` : '';
+        addLog(`${anim.charAt(0).toUpperCase()+anim.slice(1)}: rolled ${effectiveRoll}${personalityTag} → moved to ${ROOM_NAMES[newRoom]}. Caught in the light — Personality revealed: ${p.toUpperCase()}!`, 'success');
+      } else {
+        const known = G.revealedPersonalities[anim];
+        const personalityTag = known
+          ? (p === 'erratic' ? ` (erratic: ${r},${erraticRoll})` : (p === 'aggressive' ? ' +AGRO' : (p === 'cautious' ? ' +CAUT' : '')))
+          : '';
+        addLog(`${anim.charAt(0).toUpperCase()+anim.slice(1)}: rolled ${effectiveRoll}${personalityTag} → moved to ${ROOM_NAMES[newRoom]}`, 'warning');
+      }
 
       if (newRoom === 'left-door' || newRoom === 'right-door') {
         const doorSide = newRoom === 'left-door' ? 'left' : 'right';
@@ -1623,7 +1633,7 @@ function endTurn() {
         }
       }
     } else {
-      const personalityTag = p === 'erratic' ? ` (erratic: ${r},${erraticRoll})` : '';
+      const personalityTag = (G.revealedPersonalities[anim] && p === 'erratic') ? ` (erratic: ${r},${erraticRoll})` : '';
       addLog(`${anim.charAt(0).toUpperCase()+anim.slice(1)}: rolled ${effectiveRoll}${personalityTag} → stays at ${ROOM_NAMES[path[currentPos]]}`, '');
     }
   });
@@ -1649,7 +1659,10 @@ function endTurn() {
   G.actionTaken = false;
   G.actionType = null;
   G.fredFreeze = false;
+  G.watchedCorridor = null;
+  G.actionDrain = 0;
   G.lightUsed = false;
+  G.lightSide = null;
 
   if (G.turn > 12) {
     triggerWin();
@@ -1720,10 +1733,12 @@ function triggerWin() {
 
 function updateSurvivalOdds() {
   const drain = calcDrain();
-  const projectedDrain = drain * (12 - G.turn + 1);
+  const baseDrain = drain - G.actionDrain;
+  const turnsLeft = 12 - G.turn + 1;
+  const projectedDrain = G.actionDrain + baseDrain * (turnsLeft - 1);
   const projected = G.power - projectedDrain;
   const texts = [];
-  if (projected < 0) texts.push(`⚠ At current door usage, power fails around turn ${G.turn + Math.floor(G.power / drain)}.`);
+  if (projected < 0) texts.push(`⚠ At current door usage, power fails around turn ${G.turn + Math.floor((G.power - G.actionDrain) / baseDrain)}.`);
   else texts.push(`✓ Power projection: ~${Math.max(0,projected)}% at 6 AM.`);
 
   const thresh = getMoveThreshold(G.turn);

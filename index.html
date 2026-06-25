@@ -1,0 +1,1734 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Freddy Fazbear's Tabletop Pizza</title>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Creepster&family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --table: #0b0b0b;
+    --table-edge: #000000;
+    --card-stock: #171614;
+    --card-stock-hi: #1f1e1a;
+    --card-edge: #3a342a;
+    --card-edge-bright: #6b5e3e;
+    --parchment: #cdbd95;
+    --parchment-dark: #b2a073;
+    --brass: #c9a84e;
+    --brass-dim: #8a7038;
+    --pip-red: #a3211f;
+    --pip-steel: #6b6f73;
+    --pip-green: #2f7d32;
+    --ink: #e8e0c8;
+    --ink-dim: #a89a78;
+    --ink-faint: #6e6452;
+    --monitor-green: #28ff6a;
+    --power-yellow: #e8b23a;
+    --power-red: #d6362f;
+    --shadow-card: 0 2px 0 #000, 0 8px 18px -4px #000c, 0 1px 0 #ffffff08 inset;
+    --shadow-card-lift: 0 4px 0 #000, 0 14px 26px -6px #000e, 0 1px 0 #ffffff0c inset;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background:
+      radial-gradient(ellipse 140% 100% at 50% 0%, #1c1a14 0%, #0b0b0a 55%, #000 100%),
+      repeating-linear-gradient(0deg, #000 0px, #000 2px, #050504 2px, #050504 4px);
+    min-height: 100vh;
+    font-family: 'Courier Prime', monospace;
+    color: var(--ink);
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.05;
+    background-image: url("background.png");
+  }
+
+  .screen { display: none; position: relative; z-index: 1; }
+  .screen.active { display: block; }
+
+  #title-screen {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1.6rem;
+    padding: 2rem;
+  }
+  #title-screen.active { display: flex; }
+
+  .title-eyebrow {
+    font-family: 'Oswald', sans-serif;
+    font-weight: 600;
+    font-size: 0.72rem;
+    letter-spacing: 0.35em;
+    color: var(--brass);
+    text-transform: uppercase;
+  }
+
+  .title-lockup {
+    font-family: 'Creepster', cursive;
+    font-size: 3.4rem;
+    color: var(--ink);
+    text-align: center;
+    line-height: 1.05;
+    text-shadow: 0 0 30px #00000090, 2px 2px 0 #000;
+  }
+  .title-lockup .accent { color: var(--pip-red); text-shadow: 2px 2px 0 #2a0606, 0 0 30px #a3211f60; }
+
+  .title-tagline {
+    font-family: 'Courier Prime', monospace;
+    font-style: italic;
+    font-size: 0.95rem;
+    color: var(--ink-dim);
+  }
+
+  .stats-row { display: flex; gap: 0.7rem; justify-content: center; flex-wrap: wrap; }
+  .stat-chip {
+    background: var(--card-stock);
+    border: 1.5px solid var(--card-edge-bright);
+    border-radius: 3px;
+    padding: 0.35rem 0.75rem;
+    font-size: 0.68rem;
+    font-family: 'Oswald', sans-serif;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    color: var(--ink-dim);
+  }
+
+  .btn-start {
+    font-family: 'Oswald', sans-serif;
+    font-weight: 700;
+    font-size: 1.05rem;
+    letter-spacing: 0.12em;
+    background: linear-gradient(180deg, #c0312e, #8c1f1d);
+    color: #f5ece0;
+    border: none;
+    border-radius: 3px;
+    padding: 0.85rem 2.8rem;
+    cursor: pointer;
+    text-transform: uppercase;
+    box-shadow: 0 3px 0 #4d0f0d, 0 8px 18px -4px #00000090;
+    transition: all 0.12s;
+    margin-top: 0.6rem;
+  }
+  .btn-start:hover { transform: translateY(-2px); box-shadow: 0 5px 0 #4d0f0d, 0 12px 22px -4px #000000a0; }
+  .btn-start:active { transform: translateY(1px); box-shadow: 0 1px 0 #4d0f0d; }
+
+  .title-credit {
+    font-family: 'Courier Prime', monospace;
+    font-size: 0.62rem;
+    color: var(--ink-faint);
+    letter-spacing: 0.08em;
+    margin-top: 0.5rem;
+  }
+
+  #game-screen {
+    padding: 1.1rem;
+    max-width: 1240px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 290px 1fr 270px;
+    grid-template-rows: auto 1fr auto;
+    gap: 0.9rem;
+    min-height: 100vh;
+  }
+  #game-screen.active { display: grid; }
+
+  .header-bar {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: linear-gradient(180deg, var(--card-stock-hi), var(--card-stock));
+    border: 1.5px solid var(--card-edge);
+    border-radius: 4px;
+    padding: 0.65rem 1.3rem;
+    box-shadow: var(--shadow-card);
+  }
+  .office-label {
+    font-family: 'Oswald', sans-serif;
+    font-weight: 600;
+    color: var(--brass);
+    font-size: 0.72rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+  }
+  .clock-display {
+    font-family: 'Courier Prime', monospace;
+    font-weight: 700;
+    font-size: 1.7rem;
+    color: var(--monitor-green);
+    text-shadow: 0 0 10px #28ff6a70;
+    letter-spacing: 0.08em;
+  }
+  .night-badge {
+    font-family: 'Oswald', sans-serif;
+    font-weight: 500;
+    color: var(--ink-dim);
+    font-size: 0.82rem;
+    letter-spacing: 0.04em;
+  }
+  .night-badge b { color: var(--ink); }
+
+  .left-panel, .right-panel { display: flex; flex-direction: column; gap: 0.8rem; }
+
+  .tc {
+    background: linear-gradient(165deg, var(--card-stock-hi) 0%, var(--card-stock) 60%);
+    border: 1.5px solid var(--card-edge);
+    border-radius: 8px;
+    box-shadow: var(--shadow-card);
+    position: relative;
+    overflow: hidden;
+  }
+  .tc::before {
+    content: '';
+    position: absolute;
+    inset: 5px;
+    border: 1px solid #ffffff0c;
+    border-radius: 5px;
+    pointer-events: none;
+  }
+  .tc-head {
+    font-family: 'Oswald', sans-serif;
+    font-weight: 700;
+    font-size: 0.68rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink);
+    background: linear-gradient(180deg, #2a2620, #1c1a16);
+    border-bottom: 1.5px solid var(--card-edge);
+    padding: 0.5rem 0.85rem;
+  }
+  .tc-body { padding: 0.75rem 0.9rem; }
+
+  .power-value {
+    font-family: 'Courier Prime', monospace;
+    font-weight: 700;
+    font-size: 2.1rem;
+    color: var(--ink);
+    text-align: center;
+    line-height: 1;
+  }
+  .power-bar-track {
+    background: #0c0c0a;
+    border: 1.5px solid var(--card-edge);
+    border-radius: 3px;
+    height: 16px;
+    margin: 0.5rem 0;
+    overflow: hidden;
+    position: relative;
+  }
+  .power-bar-fill {
+    height: 100%;
+    border-radius: 1px;
+    transition: width 0.5s, background-color 0.5s;
+    position: relative;
+  }
+  .power-bar-fill::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 45%;
+    background: rgba(255,255,255,0.18);
+  }
+  .power-label {
+    font-size: 0.68rem;
+    color: var(--ink-faint);
+    display: flex;
+    justify-content: space-between;
+    font-family: 'Oswald', sans-serif;
+    letter-spacing: 0.04em;
+  }
+  .drain-preview {
+    font-family: 'Courier Prime', monospace;
+    font-size: 0.74rem;
+    color: var(--pip-red);
+    text-align: center;
+    margin-top: 0.4rem;
+    min-height: 1.1em;
+  }
+
+  .door-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 0.55rem; }
+  .door-btn {
+    font-family: 'Oswald', sans-serif;
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    padding: 0.55rem 0.4rem;
+    border: 1.5px solid var(--card-edge);
+    border-radius: 5px;
+    background: linear-gradient(180deg, #232019, #181611);
+    color: var(--ink-dim);
+    cursor: pointer;
+    transition: all 0.12s;
+    text-align: center;
+    position: relative;
+  }
+  .door-btn.closed {
+    background: linear-gradient(180deg, #2a1414, #1c0c0c);
+    color: var(--power-yellow);
+    border-color: #6b3a20;
+    box-shadow: inset 0 0 10px #00000080;
+  }
+  .door-btn:hover:not(:disabled) { transform: translateY(-1px); border-color: var(--card-edge-bright); }
+  .door-btn:active:not(:disabled) { transform: translateY(1px); }
+  .door-btn:disabled { cursor: not-allowed; opacity: 0.6; }
+  .door-state-icon { font-size: 1.05rem; display: block; }
+  .strained-warning { color: var(--power-red); font-size: 0.62rem; font-family: 'Courier Prime', monospace; }
+
+  .foxy-counter-track { display: flex; gap: 5px; margin: 0.45rem 0; }
+  .foxy-pip {
+    flex: 1;
+    height: 13px;
+    border: 1.5px solid var(--card-edge);
+    border-radius: 2px;
+    background: #100d0a;
+    transition: background 0.3s;
+  }
+  .foxy-pip.filled { background: var(--pip-red); border-color: #5c1210; }
+  .foxy-pip.danger { background: #ff2a26; animation: pulse-red 0.8s infinite; }
+
+  .log-card { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+  .log-card .tc-body { flex: 1; display: flex; flex-direction: column; min-height: 0; padding-top: 0.6rem; }
+  .log-entries {
+    font-size: 0.68rem;
+    color: var(--ink-dim);
+    line-height: 1.6;
+    overflow-y: auto;
+    font-family: 'Courier Prime', monospace;
+    flex: 1;
+  }
+  .log-entries::-webkit-scrollbar { width: 4px; }
+  .log-entries::-webkit-scrollbar-track { background: #100d0a; }
+  .log-entries::-webkit-scrollbar-thumb { background: var(--card-edge-bright); border-radius: 2px; }
+  .log-entry { padding: 2px 0; border-bottom: 1px dotted #4a3f2a40; }
+  .log-entry.danger { color: #ff5a52; font-weight: 700; }
+  .log-entry.info { color: #6aa8e0; }
+  .log-entry.warning { color: var(--power-yellow); }
+  .log-entry.success { color: #5cc868; }
+
+  .center-panel { display: flex; flex-direction: column; gap: 0.8rem; }
+
+  .map-card {
+    background: linear-gradient(165deg, #d8c89c 0%, var(--parchment) 45%, var(--parchment-dark) 100%);
+    border: 2px solid #4a3a1e;
+    border-radius: 6px;
+    padding: 1.3rem 1.3rem 1.1rem;
+    box-shadow: var(--shadow-card), 0 0 0 6px #00000012 inset;
+    position: relative;
+    flex: 1;
+    color: #2a2010;
+  }
+  .map-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 6px;
+    background-image:
+      radial-gradient(circle, #2a201008 1px, transparent 1.3px),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.08'/%3E%3C/svg%3E");
+    background-size: 5px 5px, auto;
+    pointer-events: none;
+  }
+  .map-card::after {
+    content: '';
+    position: absolute;
+    inset: 9px;
+    border: 1.5px dashed #4a3a1e55;
+    border-radius: 3px;
+    pointer-events: none;
+  }
+  .reg-mark {
+    position: absolute;
+    width: 13px;
+    height: 13px;
+    pointer-events: none;
+    opacity: 0.55;
+    z-index: 2;
+  }
+  .reg-mark::before, .reg-mark::after {
+    content: '';
+    position: absolute;
+    background: #4a3a1e;
+  }
+  .reg-mark::before { width: 100%; height: 1px; top: 50%; left: 0; transform: translateY(-50%); }
+  .reg-mark::after { width: 1px; height: 100%; left: 50%; top: 0; transform: translateX(-50%); }
+  .reg-mark { border: 1px solid #4a3a1e; border-radius: 50%; }
+  .reg-mark.tl { top: 5px; left: 5px; }
+  .reg-mark.tr { top: 5px; right: 5px; }
+  .reg-mark.bl { bottom: 5px; left: 5px; }
+  .reg-mark.br { bottom: 5px; right: 5px; }
+  .print-spec {
+    position: absolute;
+    bottom: 4px;
+    right: 22px;
+    font-family: 'Courier Prime', monospace;
+    font-size: 0.52rem;
+    letter-spacing: 0.05em;
+    color: #4a3a1e80;
+    z-index: 2;
+    pointer-events: none;
+  }
+  .map-title {
+    font-family: 'Oswald', sans-serif;
+    font-weight: 700;
+    font-size: 0.72rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    text-align: center;
+    color: #3a2c14;
+    margin-bottom: 0.8rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1.5px dashed #4a3a1e80;
+    position: relative;
+    z-index: 1;
+  }
+  .map-subtitle {
+    text-align: center;
+    font-family: 'Courier Prime', monospace;
+    font-size: 0.56rem;
+    letter-spacing: 0.18em;
+    color: #4a3a1e75;
+    margin-top: -0.65rem;
+    margin-bottom: 0.7rem;
+    position: relative;
+    z-index: 1;
+  }
+
+  .map-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-rows: auto auto auto auto;
+    gap: 7px;
+    font-size: 0.7rem;
+    font-family: 'Courier Prime', monospace;
+    position: relative;
+    z-index: 1;
+  }
+  .room {
+    border: 1.5px solid #6b5630;
+    border-radius: 2px;
+    padding: 0.4rem 0.5rem;
+    background: linear-gradient(165deg, #e8dcb8 0%, #ddcfa5 100%);
+    text-align: center;
+    min-height: 56px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    transition: background 0.3s;
+    box-shadow: inset 0 1px 0 #ffffff50, inset 0 -2px 4px #4a3a1e1a, 1px 1px 0 #4a3a1e30;
+  }
+  .room::before {
+    content: '';
+    position: absolute;
+    inset: 2px;
+    pointer-events: none;
+    background-image:
+      linear-gradient(to right, #6b563055 1px, transparent 1px),
+      linear-gradient(to bottom, #6b563055 1px, transparent 1px),
+      linear-gradient(to left, #6b563055 1px, transparent 1px),
+      linear-gradient(to bottom, #6b563055 1px, transparent 1px);
+    background-size: 5px 1px, 1px 5px, 5px 1px, 1px 5px;
+    background-position: top left, top left, top right, top right;
+    background-repeat: no-repeat;
+  }
+  .room.office {
+    background: linear-gradient(165deg, #1c1a14 0%, #131110 100%);
+    border: 2px solid var(--brass);
+    color: var(--monitor-green);
+    grid-column: 2;
+    grid-row: 4;
+    box-shadow: inset 0 0 14px #00000090, inset 0 0 0 1px #00000080;
+  }
+  .room.office::before { opacity: 0.4; }
+  .room.warning-zone {
+    border: 1.5px solid #8b1a1a99;
+    background: repeating-linear-gradient(135deg, #ecc9c0 0px, #ecc9c0 8px, #e0b8ad 8px, #e0b8ad 9px);
+  }
+  .room.warning-zone::after {
+    content: '';
+    position: absolute;
+    inset: 3px;
+    border: 1px dashed var(--pip-red);
+    pointer-events: none;
+  }
+  .room-name {
+    font-weight: 700;
+    font-size: 0.64rem;
+    letter-spacing: 0.04em;
+    color: #4a3a1e;
+    text-transform: uppercase;
+    font-family: 'Oswald', sans-serif;
+  }
+  .room.office .room-name { color: var(--monitor-green); }
+  .room-tokens { display: flex; gap: 3px; flex-wrap: wrap; justify-content: center; margin-top: 3px; }
+
+  .token {
+    width: 24px;
+    height: 26px;
+    border-radius: 2px;
+    border: 1.5px solid rgba(0,0,0,0.55);
+    font-size: 0.6rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    box-shadow: 0 3px 0 rgba(0,0,0,0.35), 0 4px 5px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.3);
+    font-family: 'Oswald', sans-serif;
+    transition: all 0.4s;
+    cursor: default;
+    position: relative;
+  }
+  .token::after {
+    content: '';
+    position: absolute;
+    inset: 2px;
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 1px;
+    pointer-events: none;
+  }
+  .token.bonnie { background: linear-gradient(160deg, #9a4ad6, #4a1a6a); }
+  .token.chica { background: linear-gradient(160deg, #f0c840, #a07810); }
+  .token.freddy { background: linear-gradient(160deg, #a06a32, #3a1a0a); }
+  .token.foxy { background: linear-gradient(160deg, #e85a38, #8b1a1a); }
+  .token.animatronic { animation: token-hover 2s ease-in-out infinite; }
+
+  .action-card {
+    background: linear-gradient(165deg, var(--card-stock-hi) 0%, var(--card-stock) 65%);
+    border: 1.5px solid var(--card-edge);
+    border-radius: 8px;
+    box-shadow: var(--shadow-card);
+    position: relative;
+    cursor: pointer;
+    transition: all 0.15s;
+    overflow: hidden;
+  }
+  .action-card::before {
+    content: '';
+    position: absolute;
+    inset: 4px;
+    border: 1px solid #ffffff0c;
+    border-radius: 5px;
+    pointer-events: none;
+  }
+  .action-card:hover:not(.disabled) {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-card-lift);
+    border-color: var(--card-edge-bright);
+  }
+  .action-card:active:not(.disabled) { transform: translateY(1px); }
+  .action-card.disabled { opacity: 0.45; cursor: not-allowed; filter: grayscale(40%); }
+  .action-card.used { border-style: dashed; opacity: 0.6; }
+  .action-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: linear-gradient(180deg, #2a2620, #1c1a16);
+    border-bottom: 1.5px solid var(--card-edge);
+    padding: 0.5rem 0.75rem;
+  }
+  .action-name {
+    font-family: 'Oswald', sans-serif;
+    font-weight: 700;
+    font-size: 0.78rem;
+    letter-spacing: 0.03em;
+    color: var(--ink);
+    text-transform: uppercase;
+  }
+  .action-cost {
+    font-size: 0.62rem;
+    font-family: 'Oswald', sans-serif;
+    font-weight: 700;
+    background: var(--pip-red);
+    color: #fff0e0;
+    padding: 2px 7px;
+    border-radius: 3px;
+    white-space: nowrap;
+    letter-spacing: 0.03em;
+  }
+  .action-cost.free { background: var(--pip-green); color: #e0ffe4; }
+  .action-desc {
+    font-size: 0.68rem;
+    color: var(--ink-dim);
+    line-height: 1.45;
+    font-family: 'Courier Prime', monospace;
+    padding: 0.6rem 0.85rem;
+  }
+
+  .corridor-picker { display: none; gap: 4px; padding: 0 0.7rem 0.7rem; }
+  .corridor-picker.visible { display: flex; }
+  .corr-btn {
+    flex: 1;
+    font-size: 0.62rem;
+    font-family: 'Oswald', sans-serif;
+    font-weight: 600;
+    padding: 0.4rem 0.3rem;
+    border: 1.5px solid var(--card-edge);
+    border-radius: 3px;
+    background: #100d0a;
+    color: var(--ink-dim);
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.1s;
+  }
+  .corr-btn:hover { background: #221c12; border-color: var(--brass); color: var(--brass); transform: translateY(-1px); }
+
+  .end-turn-area { grid-column: 1 / -1; display: flex; align-items: center; gap: 1rem; }
+  .btn-end-turn {
+    font-family: 'Oswald', sans-serif;
+    font-weight: 700;
+    font-size: 0.92rem;
+    letter-spacing: 0.1em;
+    background: linear-gradient(180deg, var(--card-stock-hi), var(--card-stock));
+    color: var(--brass);
+    border: 1.5px solid var(--brass-dim);
+    border-radius: 5px;
+    padding: 0.75rem 2rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    box-shadow: var(--shadow-card);
+    flex: 1;
+    text-transform: uppercase;
+  }
+  .btn-end-turn:hover:not(:disabled) { transform: translateY(-1px); border-color: var(--brass); }
+  .btn-end-turn:active:not(:disabled) { transform: translateY(1px); }
+  .btn-end-turn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .turn-status {
+    font-family: 'Courier Prime', monospace;
+    font-size: 0.7rem;
+    color: var(--ink-faint);
+    min-width: 170px;
+    line-height: 1.5;
+  }
+
+  .night-modifier-display .tc-body {
+    color: var(--ink-dim);
+    font-size: 0.68rem;
+    line-height: 1.55;
+    font-family: 'Courier Prime', monospace;
+  }
+  .night-modifier-display strong {
+    color: var(--power-yellow);
+    font-weight: 700;
+    display: block;
+    font-family: 'Oswald', sans-serif;
+    font-size: 0.74rem;
+    letter-spacing: 0.04em;
+    margin-bottom: 0.25rem;
+  }
+
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.88);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal-box {
+    background: linear-gradient(165deg, var(--card-stock-hi), var(--card-stock));
+    border: 1.5px solid var(--card-edge-bright);
+    border-radius: 10px;
+    padding: 2.2rem 2.6rem;
+    max-width: 440px;
+    width: 90%;
+    text-align: center;
+    box-shadow: var(--shadow-card-lift), 0 0 50px #00000090;
+    position: relative;
+  }
+  .modal-box::before {
+    content: '';
+    position: absolute;
+    inset: 8px;
+    border: 1px solid #ffffff0c;
+    border-radius: 7px;
+    pointer-events: none;
+  }
+  .modal-title {
+    font-family: 'Creepster', cursive;
+    font-size: 2.1rem;
+    color: var(--pip-red);
+    text-shadow: 2px 2px 0 #2a0606, 0 0 30px #a3211f50;
+    margin-bottom: 0.5rem;
+  }
+  .modal-title.win { color: #5cc868; text-shadow: 2px 2px 0 #0a2a0a, 0 0 30px #5cc86850; }
+  .modal-subtitle {
+    font-family: 'Oswald', sans-serif;
+    font-weight: 600;
+    font-size: 0.85rem;
+    letter-spacing: 0.03em;
+    color: var(--ink-dim);
+    margin-bottom: 0.7rem;
+  }
+  .modal-body {
+    font-size: 0.8rem;
+    color: var(--ink-dim);
+    line-height: 1.65;
+    margin-bottom: 1.3rem;
+    font-family: 'Courier Prime', monospace;
+  }
+  .modal-btn {
+    font-family: 'Oswald', sans-serif;
+    font-weight: 700;
+    font-size: 0.85rem;
+    letter-spacing: 0.05em;
+    background: linear-gradient(180deg, #c0312e, #8c1f1d);
+    color: #f5ece0;
+    border: none;
+    border-radius: 4px;
+    padding: 0.6rem 1.6rem;
+    cursor: pointer;
+    margin: 0 0.3rem;
+    box-shadow: 0 3px 0 #4d0f0d;
+    transition: all 0.1s;
+    text-transform: uppercase;
+  }
+  .modal-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 0 #4d0f0d; }
+  .modal-btn.secondary {
+    background: linear-gradient(180deg, #232019, #181611);
+    color: var(--brass);
+    border: 1.5px solid var(--brass-dim);
+    box-shadow: none;
+  }
+
+  .cam-result {
+    position: fixed;
+    bottom: 84px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: #060a06;
+    border: 1.5px solid var(--monitor-green);
+    color: var(--monitor-green);
+    font-family: 'Courier Prime', monospace;
+    font-size: 0.76rem;
+    padding: 0.6rem 1.2rem;
+    border-radius: 3px;
+    opacity: 0;
+    transition: all 0.3s;
+    z-index: 50;
+    white-space: nowrap;
+    box-shadow: 0 0 14px #28ff6a40;
+    text-shadow: 0 0 4px #28ff6a;
+    max-width: 90vw;
+    text-align: center;
+  }
+  .cam-result.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  .blackout-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.94);
+    z-index: 80;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+  .blackout-overlay.active { display: flex; }
+  .blackout-text {
+    font-family: 'Creepster', cursive;
+    font-size: 2.4rem;
+    color: #ff2a26;
+    text-shadow: 0 0 20px #ff000080;
+    animation: flicker 1.5s infinite;
+  }
+  .blackout-sub {
+    font-family: 'Courier Prime', monospace;
+    font-style: italic;
+    color: #8a4838;
+    font-size: 0.88rem;
+    text-align: center;
+    max-width: 320px;
+  }
+  .blackout-roll {
+    font-family: 'Courier Prime', monospace;
+    font-size: 0.95rem;
+    color: var(--power-yellow);
+    text-align: center;
+  }
+  .blackout-btn {
+    font-family: 'Oswald', sans-serif;
+    font-weight: 700;
+    font-size: 0.85rem;
+    letter-spacing: 0.06em;
+    background: #2a0c0c;
+    color: #ff7a64;
+    border: 1.5px solid #6b1c1c;
+    border-radius: 4px;
+    padding: 0.6rem 1.5rem;
+    cursor: pointer;
+    text-transform: uppercase;
+    animation: pulse-red 1.5s infinite;
+  }
+
+  .personality-row { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 0.3rem; }
+  .personality-badge {
+    font-size: 0.58rem;
+    font-family: 'Oswald', sans-serif;
+    font-weight: 700;
+    padding: 1px 5px;
+    border-radius: 2px;
+    border: 1px solid;
+    letter-spacing: 0.03em;
+  }
+  .personality-badge.aggressive { background: #2a0808; color: #e06060; border-color: #8a2020; }
+  .personality-badge.cautious { background: #0a1a2a; color: #6090e0; border-color: #204080; }
+  .personality-badge.erratic { background: #1a0a2a; color: #c070e0; border-color: #602080; }
+  .personality-badge.hidden { background: #1a1812; color: var(--ink-faint); border-color: #4a3f2a; }
+
+  .anim-status-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .anim-mini {
+    border: 1.5px solid var(--card-edge);
+    border-radius: 5px;
+    background: linear-gradient(165deg, var(--card-stock-hi), var(--card-stock));
+    position: relative;
+    overflow: hidden;
+  }
+  .anim-mini-bar { height: 4px; }
+  .anim-mini.bonnie .anim-mini-bar { background: linear-gradient(90deg,#9a4ad6,#4a1a6a); }
+  .anim-mini.chica .anim-mini-bar { background: linear-gradient(90deg,#f0c840,#a07810); }
+  .anim-mini.freddy .anim-mini-bar { background: linear-gradient(90deg,#a06a32,#3a1a0a); }
+  .anim-mini.foxy .anim-mini-bar { background: linear-gradient(90deg,#e85a38,#8b1a1a); }
+  .anim-mini-content { padding: 0.4rem 0.5rem; }
+  .anim-mini-name {
+    font-family: 'Oswald', sans-serif;
+    font-size: 0.64rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: var(--ink);
+  }
+  .anim-mini-loc { font-family: 'Courier Prime', monospace; font-size: 0.6rem; color: var(--ink-faint); margin-top: 1px; }
+  .anim-mini-loc.known { color: var(--power-yellow); }
+
+  @keyframes pulse-red { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+  @keyframes flicker {
+    0%, 100% { opacity: 1; } 92% { opacity: 1; } 93% { opacity: 0.3; }
+    94% { opacity: 1; } 96% { opacity: 0.4; } 97% { opacity: 1; }
+  }
+  @keyframes token-hover { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-2px); } }
+  @keyframes warn-flash { 0%, 100% { background: #ecc9c0; } 50% { background: #f5a8a0; } }
+  .room.warning-zone.has-threat { animation: warn-flash 1s ease-in-out 3; border-color: var(--pip-red); }
+
+  .roll-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    background: #100d0a;
+    border: 1.5px solid var(--brass);
+    border-radius: 3px;
+    font-family: 'Courier Prime', monospace;
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--power-yellow);
+    vertical-align: middle;
+  }
+
+  @media (max-width: 900px) {
+    #game-screen { grid-template-columns: 1fr 1fr; grid-template-rows: auto auto auto auto; }
+    .center-panel { grid-column: 1 / -1; order: -1; }
+    .map-grid { font-size: 0.6rem; }
+    .title-lockup { font-size: 2.5rem; }
+  }
+</style>
+</head>
+<body>
+
+<audio id="snd-bgmusic" preload="auto" loop><source src="snd-bgmusic.mp3" type="audio/mpeg"></audio>
+<audio id="snd-door" preload="auto"><source src="snd-door.mp3" type="audio/mpeg"></audio>
+<audio id="snd-jumpscare" preload="auto"><source src="snd-jumpscare.mp3" type="audio/mpeg"></audio>
+<audio id="snd-foxy" preload="auto"><source src="snd-foxy.mp3" type="audio/mpeg"></audio>
+<audio id="snd-6am" preload="auto"><source src="snd-6am.mp3" type="audio/mpeg"></audio>
+<audio id="snd-camera" preload="auto"><source src="snd-camera.mp3" type="audio/mpeg"></audio>
+
+<div id="title-screen" class="screen active">
+  <div class="title-eyebrow">A Tabletop Survival Card Game</div>
+  <div class="title-lockup">Freddy Fazbear's<br><span class="accent">Tabletop Pizza</span></div>
+  <div class="title-tagline">"Can you survive until 6 AM?"</div>
+  <div class="stats-row">
+    <div class="stat-chip">1 PLAYER</div>
+    <div class="stat-chip">20–30 MIN</div>
+    <div class="stat-chip">DIFFICULTY ★★★★☐</div>
+  </div>
+  <button class="btn-start" onclick="startGame()">Start My Shift</button>
+  <div class="title-credit">DEVELOPED BY SCOTT CAWTHON · REDESIGNED BY RYU</div>
+</div>
+
+<div id="game-screen" class="screen">
+
+  <div class="header-bar">
+    <div class="office-label">Security Office</div>
+    <div class="clock-display" id="clock-display">12:00 AM</div>
+    <div class="night-badge">Night 1 · Turn <b id="turn-num">1</b>/12</div>
+  </div>
+
+  <div class="left-panel">
+
+    <div class="tc">
+      <div class="tc-head">⚡ Power Remaining</div>
+      <div class="tc-body">
+        <div class="power-value" id="power-value">100%</div>
+        <div class="power-bar-track">
+          <div class="power-bar-fill" id="power-bar" style="width:100%; background:#2f7d32;"></div>
+        </div>
+        <div class="power-label">
+          <span>DRAINED</span>
+          <span id="power-pct-label">100%</span>
+        </div>
+        <div class="drain-preview" id="drain-preview">Drain this turn: −3 (base)</div>
+      </div>
+    </div>
+
+    <div class="tc">
+      <div class="tc-head">🚪 Doors</div>
+      <div class="tc-body">
+        <div class="door-controls">
+          <button class="door-btn" id="left-door-btn" onclick="toggleDoor('left')">
+            <span class="door-state-icon" id="left-door-icon">🔓</span>
+            <div>LEFT DOOR</div>
+            <div id="left-door-label" style="font-size:0.6rem; color:#5cc868; margin-top:2px;">OPEN</div>
+            <div class="strained-warning" id="left-strain" style="display:none">⚠ STRAINED</div>
+          </button>
+          <button class="door-btn" id="right-door-btn" onclick="toggleDoor('right')">
+            <span class="door-state-icon" id="right-door-icon">🔓</span>
+            <div>RIGHT DOOR</div>
+            <div id="right-door-label" style="font-size:0.6rem; color:#5cc868; margin-top:2px;">OPEN</div>
+          </button>
+        </div>
+        <div style="font-size:0.65rem; color:var(--ink-faint); margin-top:0.5rem; font-family:'Courier Prime',monospace;">
+          Each closed door costs −2 power/turn
+        </div>
+      </div>
+    </div>
+
+    <div class="tc">
+      <div class="tc-head">🦊 Foxy — Pirate Cove</div>
+      <div class="tc-body">
+        <div style="font-size:0.66rem; color:var(--ink-faint); margin-bottom:0.4rem; font-family:'Courier Prime',monospace;">
+          Danger Counter (charges at 4):
+        </div>
+        <div class="foxy-counter-track" id="foxy-pips">
+          <div class="foxy-pip" id="foxy-pip-0"></div>
+          <div class="foxy-pip" id="foxy-pip-1"></div>
+          <div class="foxy-pip" id="foxy-pip-2"></div>
+          <div class="foxy-pip" id="foxy-pip-3"></div>
+        </div>
+        <div id="foxy-blocks-label" style="font-size:0.63rem; color:var(--brass); margin-top:0.3rem; font-family:'Courier Prime',monospace;">
+          Blocked: 0 times (each block strains Left Door, +1 power/turn while closed)
+        </div>
+      </div>
+    </div>
+
+    <div class="tc night-modifier-display">
+      <div class="tc-head" style="background:linear-gradient(180deg,#2a2412,#1c1810); color:var(--power-yellow);">🌙 Night Modifier</div>
+      <div class="tc-body">
+        <strong id="night-mod-name">Loading...</strong>
+        <span id="night-mod-effect"></span>
+      </div>
+    </div>
+
+    <div class="tc log-card">
+      <div class="tc-head">📋 Night Log</div>
+      <div class="tc-body">
+        <div class="log-entries" id="log-entries"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="center-panel">
+    <div class="map-card">
+      <div class="reg-mark tl"></div>
+      <div class="reg-mark tr"></div>
+      <div class="reg-mark bl"></div>
+      <div class="reg-mark br"></div>
+      <div class="map-title">🗺 Floor Plan — Freddy Fazbear's Pizza</div>
+      <div class="map-subtitle">COMPONENT 02 / BOARD INSERT · 1:1 SCALE</div>
+
+      <div class="map-grid">
+        <div class="room" id="room-stage">
+          <div class="room-name">Stage</div>
+          <div class="room-tokens" id="tokens-stage"></div>
+        </div>
+        <div class="room" id="room-dining">
+          <div class="room-name">Dining Area</div>
+          <div class="room-tokens" id="tokens-dining"></div>
+        </div>
+        <div class="room" id="room-kitchen">
+          <div class="room-name">Kitchen</div>
+          <div class="room-tokens" id="tokens-kitchen"></div>
+        </div>
+
+        <div class="room" id="room-pirate">
+          <div class="room-name">Pirate Cove</div>
+          <div style="font-size:0.55rem; color:#8b1a1a; font-family:'Courier Prime',monospace;">FOXY'S LAIR</div>
+          <div class="room-tokens" id="tokens-pirate"></div>
+        </div>
+        <div class="room" id="room-supply">
+          <div class="room-name">Supply Closet</div>
+          <div class="room-tokens" id="tokens-supply"></div>
+        </div>
+        <div class="room" id="room-easthall">
+          <div class="room-name">East Hall</div>
+          <div class="room-tokens" id="tokens-easthall"></div>
+        </div>
+
+        <div class="room" id="room-westhall">
+          <div class="room-name">West Hall</div>
+          <div class="room-tokens" id="tokens-westhall"></div>
+        </div>
+        <div class="room warning-zone" id="room-west-warn">
+          <div class="room-name" style="color:#8b1a1a;">⚠ W. Warning</div>
+          <div class="room-tokens" id="tokens-west-warn"></div>
+        </div>
+        <div class="room warning-zone" id="room-east-warn">
+          <div class="room-name" style="color:#8b1a1a;">⚠ E. Warning</div>
+          <div class="room-tokens" id="tokens-east-warn"></div>
+        </div>
+
+        <div class="room" id="room-left-door">
+          <div class="room-name">Left Door</div>
+          <div class="room-tokens" id="tokens-left-door"></div>
+        </div>
+        <div class="room office" id="room-office">
+          <div class="room-name">⭐ OFFICE</div>
+          <div style="font-size:0.55rem; color:var(--monitor-green); margin-top:2px; font-family:'Courier Prime',monospace;">YOU ARE HERE</div>
+        </div>
+        <div class="room" id="room-right-door">
+          <div class="room-name">Right Door</div>
+          <div class="room-tokens" id="tokens-right-door"></div>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:1rem; margin-top:0.9rem; flex-wrap:wrap; font-size:0.6rem; font-family:'Courier Prime',monospace; color:#4a3a1e;">
+        <span><span class="token bonnie" style="display:inline-flex;width:18px;height:18px;font-size:0.45rem;">B</span> Bonnie</span>
+        <span><span class="token chica" style="display:inline-flex;width:18px;height:18px;font-size:0.45rem;">C</span> Chica</span>
+        <span><span class="token freddy" style="display:inline-flex;width:18px;height:18px;font-size:0.45rem;">F</span> Freddy</span>
+        <span><span class="token foxy" style="display:inline-flex;width:18px;height:18px;font-size:0.45rem;">🦊</span> Foxy</span>
+        <span>⚠ = Warning Zone (1 step from door)</span>
+        <span style="font-style:italic;">?? = Last seen position</span>
+      </div>
+      <div class="print-spec">FFP-04 · OFFSET 4C</div>
+    </div>
+
+    <div class="tc">
+      <div class="tc-head">🤖 Animatronic Status</div>
+      <div class="tc-body">
+        <div class="anim-status-grid">
+          <div class="anim-mini bonnie">
+            <div class="anim-mini-bar"></div>
+            <div class="anim-mini-content">
+              <div class="anim-mini-name">BONNIE</div>
+              <div class="anim-mini-loc" id="status-bonnie">Stage</div>
+              <div class="personality-row" id="badge-bonnie"></div>
+            </div>
+          </div>
+          <div class="anim-mini chica">
+            <div class="anim-mini-bar"></div>
+            <div class="anim-mini-content">
+              <div class="anim-mini-name">CHICA</div>
+              <div class="anim-mini-loc" id="status-chica">Stage</div>
+              <div class="personality-row" id="badge-chica"></div>
+            </div>
+          </div>
+          <div class="anim-mini freddy">
+            <div class="anim-mini-bar"></div>
+            <div class="anim-mini-content">
+              <div class="anim-mini-name">FREDDY</div>
+              <div class="anim-mini-loc" id="status-freddy">Stage</div>
+              <div class="personality-row" id="badge-freddy"></div>
+            </div>
+          </div>
+          <div class="anim-mini foxy">
+            <div class="anim-mini-bar"></div>
+            <div class="anim-mini-content">
+              <div class="anim-mini-name">FOXY</div>
+              <div class="anim-mini-loc" id="status-foxy">Pirate Cove</div>
+              <div class="personality-row" id="badge-foxy"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="right-panel">
+
+    <div class="tc">
+      <div class="tc-head">🎴 Your Actions This Turn</div>
+      <div class="tc-body" style="font-size:0.64rem; color:var(--ink-faint); font-style:italic; padding-top:0.5rem;">
+        Choose one action, then End Turn. Hall Light cannot combine with Camera/Pirate Cove.
+      </div>
+    </div>
+
+    <div class="action-card" id="ac-camera" onclick="doAction('camera')">
+      <div class="action-header">
+        <div class="action-name">📷 Check Cameras</div>
+        <div class="action-cost">−1 Power</div>
+      </div>
+      <div class="action-desc">Reveal one corridor of your choice. Checking East also FREEZES Freddy this turn.</div>
+      <div class="corridor-picker" id="cam-picker">
+        <button class="corr-btn" onclick="event.stopPropagation(); pickCorridor('west')">WEST<br>(Bonnie)</button>
+        <button class="corr-btn" onclick="event.stopPropagation(); pickCorridor('east')">EAST<br>(Chica/Freddy)</button>
+        <button class="corr-btn" onclick="event.stopPropagation(); pickCorridor('dining')">DINING<br>(Stage)</button>
+      </div>
+    </div>
+
+    <div class="action-card" id="ac-pirate" onclick="doAction('pirate')">
+      <div class="action-header">
+        <div class="action-name">🦜 Watch Pirate Cove</div>
+        <div class="action-cost">−1 Power</div>
+      </div>
+      <div class="action-desc">Resets Foxy's Danger Counter to 0. Does NOT reveal other animatronics.</div>
+    </div>
+
+    <div class="action-card" id="ac-light" onclick="doAction('light')">
+      <div class="action-header">
+        <div class="action-name">🔦 Use Hall Light</div>
+        <div class="action-cost free">FREE</div>
+      </div>
+      <div class="action-desc">Peek at a Warning Zone. Prevents camera/cove check this turn. No power cost.</div>
+      <div class="corridor-picker" id="light-picker">
+        <button class="corr-btn" onclick="event.stopPropagation(); pickLight('west')">LEFT HALL</button>
+        <button class="corr-btn" onclick="event.stopPropagation(); pickLight('east')">RIGHT HALL</button>
+      </div>
+    </div>
+
+    <div class="action-card" id="ac-nothing" onclick="doAction('nothing')">
+      <div class="action-header">
+        <div class="action-name">⏸ Wait & Watch</div>
+        <div class="action-cost free">FREE</div>
+      </div>
+      <div class="action-desc">Take no action this turn. Save power. Foxy counter +1. Risk escalates.</div>
+    </div>
+
+    <div class="tc" style="margin-top: auto;">
+      <div class="tc-head">📊 Survival Outlook</div>
+      <div class="tc-body" style="font-size:0.66rem; color:var(--ink-dim); line-height:1.6;">
+        <div id="survival-text">Calculating...</div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="end-turn-area">
+    <div class="turn-status" id="turn-status">
+      Awaiting your action for this turn.
+    </div>
+    <button class="btn-end-turn" id="end-turn-btn" onclick="endTurn()" disabled>
+      ⏰ End Turn — Roll Animatronics
+    </button>
+  </div>
+
+</div>
+
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal-box" id="modal-box">
+    <div class="modal-title" id="modal-title">GAME OVER</div>
+    <div class="modal-subtitle" id="modal-subtitle"></div>
+    <div class="modal-body" id="modal-body"></div>
+    <button class="modal-btn" id="modal-btn-1" onclick="restartGame()">TRY AGAIN</button>
+    <button class="modal-btn secondary" id="modal-btn-2" onclick="goTitle()">MAIN MENU</button>
+  </div>
+</div>
+
+<div class="blackout-overlay" id="blackout-overlay">
+  <div class="blackout-text">⚡ POWER OUT ⚡</div>
+  <div class="blackout-sub">
+    Power has failed. The lights are gone. Music plays somewhere in the darkness...
+  </div>
+  <div class="blackout-roll" id="blackout-roll-info">
+    Each turn: Roll d6. 1–4 = Freddy does NOT enter. 5–6 = Game Over.
+  </div>
+  <button class="blackout-btn" id="blackout-roll-btn" onclick="blackoutRoll()">🎲 ROLL FOR SURVIVAL</button>
+</div>
+
+<div class="cam-result" id="cam-result"></div>
+
+<script>
+const CLOCKS = ['12:00 AM','12:30 AM','1:00 AM','1:30 AM','2:00 AM','2:30 AM','3:00 AM','3:30 AM','4:00 AM','4:30 AM','5:00 AM','5:30 AM'];
+
+const PATHS = {
+  bonnie: ['stage','dining','supply','westhall','west-warn','left-door'],
+  chica:  ['stage','dining','kitchen','easthall','east-warn','right-door'],
+  freddy: ['stage','dining','kitchen','easthall','east-warn','right-door'],
+  foxy:   ['pirate']
+};
+
+const ROOM_NAMES = {
+  stage:'Stage', dining:'Dining Area', kitchen:'Kitchen',
+  supply:'Supply Closet', easthall:'East Hall', westhall:'West Hall',
+  'west-warn':'⚠ W. Warning', 'east-warn':'⚠ E. Warning',
+  'left-door':'Left Door', 'right-door':'Right Door',
+  pirate:'Pirate Cove', office:'Office'
+};
+
+const NIGHT_MODIFIERS = [
+  { name: 'Business as Usual', effect: 'No special rules. Standard night.' },
+  { name: 'Freddy Ignores Cameras', effect: 'East camera does NOT freeze Freddy this night. He moves freely.' },
+  { name: 'Power Surge', effect: 'Base passive drain is +5 per turn instead of +3.' },
+  { name: 'Foxy is Restless', effect: 'Foxy counter increases by +2 each turn instead of +1 when unwatched.' },
+  { name: 'Quiet Shift', effect: 'Animatronics move thresholds are one lower (easier) all night.' }
+];
+
+const PERSONALITIES = ['aggressive','cautious','erratic'];
+
+let G = {};
+
+function roll(max = 6) { return Math.floor(Math.random() * max) + 1; }
+
+function getMoveThreshold(turn) {
+  if (turn <= 4) return 3;
+  if (turn <= 8) return 4;
+  return 5;
+}
+
+function getAdjustedThreshold(anim, turn) {
+  let base = getMoveThreshold(turn);
+  const p = G.personalities[anim];
+  if (G.nightMod.name === 'Quiet Shift') base -= 1;
+  if (p === 'aggressive') base += 1;
+  if (p === 'cautious') base -= 1;
+  return Math.max(1, Math.min(6, base));
+}
+
+function startGame() {
+playSound('snd-bgmusic');
+  G = {
+    turn: 1,
+    power: 100,
+    doors: { left: 'open', right: 'open' },
+    foxyCounter: 0,
+    foxyBlocks: 0,
+    positions: { bonnie: 0, chica: 0, freddy: 0, foxy: 0 },
+    knownPositions: { bonnie: null, chica: null, freddy: null, foxy: null },
+    personalities: {
+      bonnie: PERSONALITIES[Math.floor(Math.random()*3)],
+      chica:  PERSONALITIES[Math.floor(Math.random()*3)],
+      freddy: PERSONALITIES[Math.floor(Math.random()*3)],
+      foxy:   PERSONALITIES[Math.floor(Math.random()*3)]
+    },
+    nightMod: NIGHT_MODIFIERS[Math.floor(Math.random() * NIGHT_MODIFIERS.length)],
+    actionTaken: false,
+    actionType: null,
+    fredFreeze: false,
+    lightUsed: false,
+    gameOver: false,
+    blackout: false,
+    blackoutTurns: 0,
+    revealedPersonalities: { bonnie:false, chica:false, freddy:false, foxy:false },
+    log: []
+  };
+
+  showScreen('game');
+  renderAll();
+  addLog('Night begins. Survive until 6 AM.', 'info');
+  addLog(`Night modifier: "${G.nightMod.name}"`, 'warning');
+  updateSurvivalOdds();
+  if (G.nightMod.name === 'Freddy Ignores Cameras') {
+    addLog('WARNING: East camera does NOT freeze Freddy tonight.', 'danger');
+  }
+}
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id + '-screen').classList.add('active');
+}
+
+function addLog(msg, type = '') {
+  G.log.unshift({ msg, type });
+  if (G.log.length > 60) G.log.pop();
+  renderLog();
+}
+
+function renderLog() {
+  const el = document.getElementById('log-entries');
+  el.innerHTML = G.log.slice(0,25).map(e =>
+    `<div class="log-entry ${e.type}">${e.msg}</div>`
+  ).join('');
+}
+
+function calcDrain() {
+  let d = G.nightMod.name === 'Power Surge' ? 5 : 3;
+  if (G.doors.left === 'closed') d += 2;
+  if (G.doors.right === 'closed') d += 2;
+  if (G.doors.left === 'closed' && G.foxyBlocks > 0) d += G.foxyBlocks;
+  return d;
+}
+
+function renderPower() {
+  const pct = Math.max(0, G.power);
+  document.getElementById('power-value').textContent = pct + '%';
+  document.getElementById('power-pct-label').textContent = pct + '%';
+  const bar = document.getElementById('power-bar');
+  bar.style.width = pct + '%';
+  bar.style.background = pct > 50 ? '#2f7d32' : pct > 25 ? '#e8b23a' : '#d6362f';
+  const drain = calcDrain();
+  const strainNote = (G.doors.left === 'closed' && G.foxyBlocks > 0) ? `+${G.foxyBlocks} strain` : '';
+  document.getElementById('drain-preview').textContent = `Drain this turn: −${drain} (base${G.doors.left==='closed'?'+door':''}${G.doors.right==='closed'?'+door':''}${strainNote ? ' '+strainNote : ''})`;
+}
+
+function renderDoors() {
+  const ld = G.doors.left;
+  const rd = G.doors.right;
+  const lBtn = document.getElementById('left-door-btn');
+  const rBtn = document.getElementById('right-door-btn');
+
+  document.getElementById('left-door-icon').textContent = ld === 'closed' ? '🔒' : '🔓';
+  document.getElementById('left-door-label').textContent = ld.toUpperCase();
+  document.getElementById('left-door-label').style.color = ld === 'closed' ? '#e8b23a' : '#5cc868';
+  lBtn.classList.toggle('closed', ld === 'closed');
+
+  document.getElementById('right-door-icon').textContent = rd === 'closed' ? '🔒' : '🔓';
+  document.getElementById('right-door-label').textContent = rd.toUpperCase();
+  document.getElementById('right-door-label').style.color = rd === 'closed' ? '#e8b23a' : '#5cc868';
+  rBtn.classList.toggle('closed', rd === 'closed');
+
+  document.getElementById('left-strain').style.display = G.foxyBlocks > 0 ? 'block' : 'none';
+}
+
+function renderFoxy() {
+  for (let i = 0; i < 4; i++) {
+    const pip = document.getElementById('foxy-pip-' + i);
+    pip.classList.remove('filled','danger');
+    if (i < G.foxyCounter) {
+      pip.classList.add(G.foxyCounter >= 3 ? 'danger' : 'filled');
+    }
+  }
+  const mult = G.nightMod.name === 'Foxy is Restless' ? 2 : 1;
+  const strainText = G.foxyBlocks > 0 ? `(Left Door strained: +${G.foxyBlocks} power/turn while closed)` : '(no strain yet)';
+  document.getElementById('foxy-blocks-label').textContent =
+    `Blocked: ${G.foxyBlocks} time(s) ${strainText} | +${mult}/turn unwatched`;
+}
+
+function renderClock() {
+  const idx = Math.min(G.turn - 1, 11);
+  document.getElementById('clock-display').textContent = CLOCKS[idx];
+  document.getElementById('turn-num').textContent = G.turn;
+}
+
+function renderTokens() {
+  const allRooms = ['stage','dining','kitchen','pirate','supply','easthall','westhall','west-warn','east-warn','left-door','right-door'];
+  allRooms.forEach(r => { document.getElementById('tokens-' + r).innerHTML = ''; });
+
+  const anims = ['bonnie','chica','freddy','foxy'];
+  anims.forEach(a => {
+    const path = PATHS[a];
+    const pos = G.positions[a];
+    const roomId = path[pos];
+    const container = document.getElementById('tokens-' + roomId);
+    if (container) {
+      const t = document.createElement('div');
+      t.className = 'token ' + a + ' animatronic';
+      t.title = a.charAt(0).toUpperCase()+a.slice(1);
+      t.textContent = a === 'foxy' ? '🦊' : a[0].toUpperCase();
+      container.appendChild(t);
+    }
+    if (roomId === 'west-warn' || roomId === 'east-warn') {
+      document.getElementById('room-' + roomId).classList.add('has-threat');
+      setTimeout(() => document.getElementById('room-' + roomId).classList.remove('has-threat'), 3000);
+    }
+  });
+}
+
+function renderAnimStatus() {
+  ['bonnie','chica','freddy','foxy'].forEach(a => {
+    const el = document.getElementById('status-' + a);
+    const known = G.knownPositions[a];
+    if (known !== null) {
+      el.textContent = ROOM_NAMES[known] || known;
+      el.classList.add('known');
+    } else {
+      el.textContent = '?? Unknown';
+      el.classList.remove('known');
+    }
+
+    const badgeEl = document.getElementById('badge-' + a);
+    if (G.revealedPersonalities[a]) {
+      const p = G.personalities[a];
+      badgeEl.innerHTML = `<span class="personality-badge ${p}">${p.toUpperCase()}</span>`;
+    } else {
+      badgeEl.innerHTML = `<span class="personality-badge hidden">UNKNOWN</span>`;
+    }
+  });
+}
+
+function renderNightMod() {
+  document.getElementById('night-mod-name').textContent = '🌙 ' + G.nightMod.name;
+  document.getElementById('night-mod-effect').textContent = G.nightMod.effect;
+}
+
+function renderActions() {
+  const cards = ['camera','pirate','light','nothing'];
+  cards.forEach(id => {
+    const el = document.getElementById('ac-' + id);
+    el.classList.remove('disabled','used');
+    if (G.actionTaken) el.classList.add('used');
+  });
+  if (G.actionTaken) {
+    document.getElementById('end-turn-btn').disabled = false;
+    document.getElementById('turn-status').textContent = `Action taken: ${G.actionType}. Ready to resolve.`;
+  } else {
+    document.getElementById('end-turn-btn').disabled = true;
+    document.getElementById('turn-status').textContent = 'Awaiting your action for this turn.';
+  }
+}
+
+function renderAll() {
+  renderPower();
+  renderDoors();
+  renderFoxy();
+  renderClock();
+  renderTokens();
+  renderAnimStatus();
+  renderNightMod();
+  renderActions();
+}
+
+function toggleDoor(side) {
+  if (G.gameOver) return;
+  G.doors[side] = G.doors[side] === 'open' ? 'closed' : 'open';
+  addLog(`${side.charAt(0).toUpperCase()+side.slice(1)} door: ${G.doors[side].toUpperCase()}`, '');
+  playSound('snd-door');
+  renderDoors();
+  renderPower();
+}
+
+function doAction(type) {
+  if (G.actionTaken || G.gameOver) return;
+
+  if (type === 'camera') {
+    if (G.lightUsed) { showCamResult('❌ Hall light already used — cannot check cameras this turn.'); return; }
+    document.getElementById('cam-picker').classList.toggle('visible');
+    return;
+  }
+  if (type === 'light') {
+    document.getElementById('light-picker').classList.toggle('visible');
+    return;
+  }
+  if (type === 'pirate') {
+    if (G.lightUsed) { showCamResult('❌ Hall light already used — cannot check Pirate Cove this turn.'); return; }
+    G.actionTaken = true;
+    G.actionType = 'Watch Pirate Cove';
+    G.foxyCounter = 0;
+    addLog('Pirate Cove checked — Foxy counter reset to 0.', 'success');
+    playSound('snd-camera');
+    G.knownPositions.foxy = 'pirate';
+    showCamResult('🦜 Pirate Cove: Foxy spotted. Counter reset to 0.');
+    renderActions();
+    renderFoxy();
+    return;
+  }
+  if (type === 'nothing') {
+    G.actionTaken = true;
+    G.actionType = 'Wait & Watch';
+    addLog('No action taken. Foxy grows restless.', 'warning');
+    renderActions();
+    updateSurvivalOdds();
+    return;
+  }
+}
+
+function pickCorridor(corr) {
+  if (G.actionTaken) return;
+  G.actionTaken = true;
+  G.actionType = 'Camera — ' + corr.charAt(0).toUpperCase()+corr.slice(1);
+  document.getElementById('cam-picker').classList.remove('visible');
+  playSound('snd-camera');
+
+  let result = '';
+  const bonniePos = PATHS.bonnie[G.positions.bonnie];
+  const chicaPos = PATHS.chica[G.positions.chica];
+  const freddyPos = PATHS.freddy[G.positions.freddy];
+
+  if (corr === 'west') {
+    G.knownPositions.bonnie = bonniePos;
+    G.revealedPersonalities.bonnie = true;
+    const inWestCorridor = ['supply','westhall','west-warn','left-door'].includes(bonniePos);
+    result = inWestCorridor ? `WEST: Bonnie at ${ROOM_NAMES[bonniePos]}` : `WEST: Bonnie not in west corridor`;
+  } else if (corr === 'east') {
+    G.knownPositions.chica = chicaPos;
+    G.knownPositions.freddy = freddyPos;
+    G.revealedPersonalities.chica = true;
+    G.revealedPersonalities.freddy = true;
+    if (G.nightMod.name !== 'Freddy Ignores Cameras') G.fredFreeze = true;
+    result = `EAST: Chica @ ${ROOM_NAMES[chicaPos]} | Freddy @ ${ROOM_NAMES[freddyPos]}`;
+    if (G.fredFreeze) result += ' | Freddy FROZEN';
+    addLog('East camera: Freddy frozen this turn.' + (G.nightMod.name==='Freddy Ignores Cameras'?' (modifier override!)':''), 'info');
+  } else {
+    const inDining = ['bonnie','chica','freddy'].filter(a => ['stage','dining'].includes(PATHS[a][G.positions[a]]));
+    inDining.forEach(a => { G.knownPositions[a] = PATHS[a][G.positions[a]]; });
+    result = 'DINING: ' + (inDining.length ? inDining.map(a=>a+' at '+ROOM_NAMES[PATHS[a][G.positions[a]]]).join(', ') : 'Area clear');
+  }
+
+  addLog(`📷 Camera [${corr.toUpperCase()}]: ${result}`, 'info');
+  showCamResult('📷 ' + result);
+  renderActions();
+  renderAnimStatus();
+  updateSurvivalOdds();
+}
+
+function pickLight(side) {
+  if (G.actionTaken) return;
+  G.actionTaken = true;
+  G.lightUsed = true;
+  G.actionType = 'Hall Light — ' + (side === 'west' ? 'Left' : 'Right');
+  document.getElementById('light-picker').classList.remove('visible');
+
+  let animsHere = [];
+  if (side === 'west') {
+    if (PATHS.bonnie[G.positions.bonnie] === 'west-warn') {
+      animsHere.push('Bonnie');
+      G.knownPositions.bonnie = 'west-warn';
+      G.revealedPersonalities.bonnie = true;
+    }
+  } else {
+    ['chica','freddy'].forEach(a => {
+      if (PATHS[a][G.positions[a]] === 'east-warn') {
+        animsHere.push(a.charAt(0).toUpperCase()+a.slice(1));
+        G.knownPositions[a] = 'east-warn';
+        G.revealedPersonalities[a] = true;
+      }
+    });
+  }
+
+  const label = side === 'west' ? 'Left Hall (W. Warning Zone)' : 'Right Hall (E. Warning Zone)';
+  const msg = animsHere.length
+    ? `🔦 ${label}: ⚠ ${animsHere.join(', ')} IN WARNING ZONE!`
+    : `🔦 ${label}: Clear.`;
+  addLog(msg, animsHere.length ? 'danger' : 'success');
+  showCamResult(msg);
+  renderActions();
+  renderAnimStatus();
+  updateSurvivalOdds();
+}
+
+function showCamResult(msg) {
+  const el = document.getElementById('cam-result');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(el._timer);
+  el._timer = setTimeout(() => el.classList.remove('show'), 3500);
+}
+
+function endTurn() {
+  if (!G.actionTaken || G.gameOver) return;
+  document.getElementById('end-turn-btn').disabled = true;
+
+  if (G.actionType !== 'Watch Pirate Cove') {
+    const inc = G.nightMod.name === 'Foxy is Restless' ? 2 : 1;
+    G.foxyCounter = Math.min(4, G.foxyCounter + inc);
+    addLog(`Foxy counter: ${G.foxyCounter}/4 (unwatched +${inc})`, 'warning');
+  }
+
+  if (G.foxyCounter >= 4) {
+    addLog('🦊 FOXY CHARGES THE LEFT DOOR!', 'danger');
+    playSound('snd-foxy');
+    if (G.doors.left === 'open') {
+      triggerGameOver('foxy', 'Foxy charged and the left door was open!');
+      return;
+    } else {
+      G.foxyCounter = 0;
+      G.foxyBlocks++;
+      addLog(`Left door held! Foxy blocked. Door is now strained (+${G.foxyBlocks} power/turn while closed).`, 'warning');
+    }
+  }
+
+  const threshold = getMoveThreshold(G.turn);
+  addLog(`--- Turn ${G.turn} roll phase (move on 1–${threshold}) ---`, '');
+
+  let stop = false;
+  ['bonnie','chica','freddy'].forEach(anim => {
+    if (stop) return;
+    const adjThresh = getAdjustedThreshold(anim, G.turn);
+    if (anim === 'freddy' && G.fredFreeze) {
+      addLog(`Freddy: FROZEN by East camera.`, 'info');
+      return;
+    }
+    const r = roll();
+    const path = PATHS[anim];
+    const currentPos = G.positions[anim];
+    const p = G.personalities[anim];
+    const erraticRoll = (p === 'erratic') ? roll() : null;
+
+    let effectiveRoll = r;
+    if (p === 'erratic') {
+      effectiveRoll = G.turn % 2 === 1 ? Math.max(r, erraticRoll) : Math.min(r, erraticRoll);
+    }
+
+    const finalMoved = effectiveRoll <= adjThresh;
+
+    if (finalMoved && currentPos < path.length - 1) {
+      G.positions[anim]++;
+      const newRoom = path[G.positions[anim]];
+      G.knownPositions[anim] = null;
+      const personalityTag = p === 'erratic' ? ` (erratic: ${r},${erraticRoll})` : (p === 'aggressive' ? ' +AGRO' : (p === 'cautious' ? ' +CAUT' : ''));
+      addLog(`${anim.charAt(0).toUpperCase()+anim.slice(1)}: rolled ${effectiveRoll}${personalityTag} → moved to ${ROOM_NAMES[newRoom]}`, 'warning');
+
+      if (!G.revealedPersonalities[anim] && G.turn >= 3) {
+        G.revealedPersonalities[anim] = true;
+      }
+
+      if (newRoom === 'left-door' || newRoom === 'right-door') {
+        const doorSide = newRoom === 'left-door' ? 'left' : 'right';
+        const doorState = G.doors[doorSide];
+        if (doorState === 'open') {
+          triggerGameOver(anim, `${anim.charAt(0).toUpperCase()+anim.slice(1)} reached the ${doorSide} door while it was open!`);
+          stop = true;
+          return;
+        } else {
+          addLog(`${anim}: blocked by closed ${doorSide} door.`, 'success');
+        }
+      }
+    } else {
+      addLog(`${anim.charAt(0).toUpperCase()+anim.slice(1)}: rolled ${effectiveRoll} → stays at ${ROOM_NAMES[path[currentPos]]}`, '');
+    }
+  });
+
+  if (G.gameOver) return;
+
+  const drain = calcDrain();
+  G.power -= drain;
+  addLog(`Power drained: −${drain}. Remaining: ${G.power}%`, G.power <= 30 ? 'danger' : '');
+
+  if (G.power <= 0) {
+    G.power = 0;
+    G.blackout = true;
+    addLog('⚡ POWER OUT — BLACKOUT MODE!', 'danger');
+    document.getElementById('blackout-overlay').classList.add('active');
+    renderPower();
+    renderTokens();
+    renderAnimStatus();
+    return;
+  }
+
+  G.turn++;
+  G.actionTaken = false;
+  G.actionType = null;
+  G.fredFreeze = false;
+  G.lightUsed = false;
+
+  if (G.turn > 12) {
+    triggerWin();
+    return;
+  }
+
+  renderAll();
+  updateSurvivalOdds();
+}
+
+function blackoutRoll() {
+  const r = roll();
+  G.blackoutTurns++;
+  document.getElementById('blackout-roll-info').textContent =
+    `Turn ${G.turn}, Roll ${G.blackoutTurns}: You rolled a ${r}.`;
+  if (r >= 5) {
+    addLog(`Blackout roll: ${r} — Freddy enters. Game Over.`, 'danger');
+    document.getElementById('blackout-overlay').classList.remove('active');
+    triggerGameOver('freddy', `Freddy entered during blackout (rolled ${r}).`);
+  } else {
+    addLog(`Blackout roll: ${r} — Safe for now. ${G.turn < 12 ? 'Roll again next turn.' : '6 AM approaching...'}`, 'warning');
+    G.turn++;
+    if (G.turn > 12) {
+      document.getElementById('blackout-overlay').classList.remove('active');
+      triggerWin();
+    } else {
+      document.getElementById('blackout-roll-info').textContent =
+        `Roll 1–4 = safe. Roll 5–6 = Freddy enters. ${12 - G.turn + 1} turn(s) left.`;
+    }
+  }
+}
+
+function triggerGameOver(killer, reason) {
+  G.gameOver = true;
+  playSound('snd-jumpscare');
+
+  const names = { bonnie:'Bonnie', chica:'Chica', freddy:'Freddy', foxy:'Foxy' };
+  const name = names[killer] || killer;
+  const flavors = {
+    bonnie: 'The purple rabbit stepped out of the darkness. You never closed that door in time.',
+    chica: 'A yellow beak in the corridor. The sound of her waddling became your last memory.',
+    freddy: "Freddy's top hat was the last thing you saw before the cameras went dark.",
+    foxy: "A pirate's charge — too fast, too furious. The Cove wasn't enough to hold him."
+  };
+
+  document.getElementById('modal-title').textContent = '💀 GAME OVER';
+  document.getElementById('modal-title').className = 'modal-title';
+  document.getElementById('modal-subtitle').textContent = `${name} got you.`;
+  document.getElementById('modal-body').innerHTML =
+    `<em>${flavors[killer] || reason}</em><br><br>` +
+    `You survived until Turn ${G.turn} (${CLOCKS[Math.min(G.turn-1,11)]}).<br>` +
+    `Power remaining: ${Math.max(0,G.power)}%`;
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function triggerWin() {
+  G.gameOver = true;
+  playSound('snd-6am');
+  document.getElementById('modal-title').textContent = '🌅 6:00 AM';
+  document.getElementById('modal-title').className = 'modal-title win';
+  document.getElementById('modal-subtitle').textContent = 'You survived the night.';
+  document.getElementById('modal-body').innerHTML =
+    `The morning shift is here. You made it to dawn with ${Math.max(0,G.power)}% power remaining.<br><br>` +
+    `Night Modifier: <em>${G.nightMod.name}</em><br>` +
+    `Foxy blocked ${G.foxyBlocks} time(s).`;
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function updateSurvivalOdds() {
+  const drain = calcDrain();
+  const projectedDrain = drain * (12 - G.turn + 1);
+  const projected = G.power - projectedDrain;
+  const texts = [];
+  if (projected < 0) texts.push(`⚠ At current door usage, power fails around turn ${G.turn + Math.floor(G.power / drain)}.`);
+  else texts.push(`✓ Power projection: ~${Math.max(0,projected)}% at 6 AM.`);
+
+  const thresh = getMoveThreshold(G.turn);
+  const pct = Math.round((thresh/6)*100);
+  texts.push(`Move probability now: ${pct}% per animatronic.`);
+
+  if (G.foxyCounter >= 3) texts.push(`🦊 DANGER: Foxy charges next turn if unwatched!`);
+  if (G.foxyBlocks > 0) texts.push(`⚠ Left door strained: costs +${G.foxyBlocks} extra power/turn while closed.`);
+
+  document.getElementById('survival-text').innerHTML = texts.join('<br>');
+}
+
+function playSound(id) {
+  try {
+    const a = document.getElementById(id);
+    if (a) { a.currentTime = 0; a.play().catch(()=>{}); }
+  } catch(e) {}
+}
+
+function restartGame() {
+  document.getElementById('modal-overlay').classList.remove('open');
+  document.getElementById('blackout-overlay').classList.remove('active');
+  startGame();
+}
+
+function goTitle() {
+  document.getElementById('modal-overlay').classList.remove('open');
+  document.getElementById('blackout-overlay').classList.remove('active');
+  showScreen('title');
+}
+</script>
+</body>
+</html>

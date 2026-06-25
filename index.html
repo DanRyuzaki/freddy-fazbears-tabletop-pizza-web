@@ -1081,14 +1081,14 @@
 
     <div class="action-card" id="ac-camera" onclick="doAction('camera')">
       <div class="action-header">
-        <div class="action-name">📷 Check Cameras</div>
-        <div class="action-cost">−1 Power</div>
+        <div class="action-name">📷 Watch Camera</div>
+        <div class="action-cost free">FREE</div>
       </div>
-      <div class="action-desc">Reveal one corridor of your choice. Checking East also FREEZES Freddy this turn.</div>
+      <div class="action-desc">FREEZE an animatronic this turn. If they would have moved, their personality is revealed instead. West = Bonnie. East = Chica &amp; Freddy.</div>
       <div class="corridor-picker" id="cam-picker">
         <button class="corr-btn" onclick="event.stopPropagation(); pickCorridor('west')">WEST<br>(Bonnie)</button>
         <button class="corr-btn" onclick="event.stopPropagation(); pickCorridor('east')">EAST<br>(Chica/Freddy)</button>
-        <button class="corr-btn" onclick="event.stopPropagation(); pickCorridor('dining')">DINING<br>(Stage)</button>
+        <button class="corr-btn" onclick="event.stopPropagation(); pickCorridor('dining')">DINING<br>(Stage area)</button>
       </div>
     </div>
 
@@ -1117,7 +1117,7 @@
         <div class="action-name">⏸ Wait & Watch</div>
         <div class="action-cost free">FREE</div>
       </div>
-      <div class="action-desc">Take no action this turn. Save power. Foxy counter +1. Risk escalates.</div>
+      <div class="action-desc">Take no action this turn. Save power. Foxy counter +1. Risk escalates. No freeze on any animatronic.</div>
     </div>
 
     <div class="tc" style="margin-top: auto;">
@@ -1231,6 +1231,7 @@ playSound('snd-bgmusic');
     actionType: null,
     fredFreeze: false,
     lightUsed: false,
+    watchedCorridor: null,
     gameOver: false,
     blackout: false,
     blackoutTurns: 0,
@@ -1352,14 +1353,12 @@ function renderTokens() {
 function renderAnimStatus() {
   ['bonnie','chica','freddy','foxy'].forEach(a => {
     const el = document.getElementById('status-' + a);
-    const known = G.knownPositions[a];
-    if (known !== null) {
-      el.textContent = ROOM_NAMES[known] || known;
-      el.classList.add('known');
-    } else {
-      el.textContent = '?? Unknown';
-      el.classList.remove('known');
-    }
+    // Tabletop: position is always visible on the board
+    const path = PATHS[a];
+    const pos = G.positions[a];
+    const roomId = path[pos];
+    el.textContent = ROOM_NAMES[roomId] || roomId;
+    el.classList.add('known');
 
     const badgeEl = document.getElementById('badge-' + a);
     if (G.revealedPersonalities[a]) {
@@ -1454,35 +1453,34 @@ function pickCorridor(corr) {
   document.getElementById('cam-picker').classList.remove('visible');
   playSound('snd-camera');
 
-  let result = '';
-  const bonniePos = PATHS.bonnie[G.positions.bonnie];
-  const chicaPos = PATHS.chica[G.positions.chica];
-  const freddyPos = PATHS.freddy[G.positions.freddy];
-
+  // Camera now FREEZES animatronics in that corridor.
+  // Personality is NOT revealed here — it reveals during the roll phase
+  // only if the animatronic would have moved but was frozen instead.
   if (corr === 'west') {
-    G.knownPositions.bonnie = bonniePos;
-    G.revealedPersonalities.bonnie = true;
-    const inWestCorridor = ['supply','westhall','west-warn','left-door'].includes(bonniePos);
-    result = inWestCorridor ? `WEST: Bonnie at ${ROOM_NAMES[bonniePos]}` : `WEST: Bonnie not in west corridor`;
+    G.fredFreeze = false;
+    G.watchedCorridor = 'west'; // Bonnie's corridor
+    addLog('📷 Camera [WEST]: Watching Bonnie\'s corridor. She is FROZEN this turn.', 'info');
+    showCamResult('📷 WEST CAM: Bonnie frozen. Personality reveals if she would have moved.');
   } else if (corr === 'east') {
-    G.knownPositions.chica = chicaPos;
-    G.knownPositions.freddy = freddyPos;
-    G.revealedPersonalities.chica = true;
-    G.revealedPersonalities.freddy = true;
-    if (G.nightMod.name !== 'Freddy Ignores Cameras') G.fredFreeze = true;
-    result = `EAST: Chica @ ${ROOM_NAMES[chicaPos]} | Freddy @ ${ROOM_NAMES[freddyPos]}`;
-    if (G.fredFreeze) result += ' | Freddy FROZEN';
-    addLog('East camera: Freddy frozen this turn.' + (G.nightMod.name==='Freddy Ignores Cameras'?' (modifier override!)':''), 'info');
+    G.fredFreeze = true;  // East freezes both Chica and Freddy
+    G.watchedCorridor = 'east';
+    const modOverride = G.nightMod.name === 'Freddy Ignores Cameras';
+    if (modOverride) {
+      G.fredFreeze = false;
+      addLog('📷 Camera [EAST]: Chica frozen. Freddy IGNORES cameras tonight — he moves freely.', 'warning');
+      showCamResult('📷 EAST CAM: Chica frozen. Freddy unaffected (Night Modifier).');
+    } else {
+      addLog('📷 Camera [EAST]: Chica & Freddy frozen this turn. Personality reveals if either would have moved.', 'info');
+      showCamResult('📷 EAST CAM: Chica & Freddy frozen. Personalities reveal on intercepted move.');
+    }
   } else {
-    const inDining = ['bonnie','chica','freddy'].filter(a => ['stage','dining'].includes(PATHS[a][G.positions[a]]));
-    inDining.forEach(a => { G.knownPositions[a] = PATHS[a][G.positions[a]]; });
-    result = 'DINING: ' + (inDining.length ? inDining.map(a=>a+' at '+ROOM_NAMES[PATHS[a][G.positions[a]]]).join(', ') : 'Area clear');
+    // Dining camera: freezes all still in Stage/Dining area
+    G.watchedCorridor = 'dining';
+    addLog('📷 Camera [DINING]: Watching Stage/Dining. Any animatronics there are frozen this turn.', 'info');
+    showCamResult('📷 DINING CAM: Stage/Dining area watched. Animatronics there are frozen.');
   }
 
-  addLog(`📷 Camera [${corr.toUpperCase()}]: ${result}`, 'info');
-  showCamResult('📷 ' + result);
   renderActions();
-  renderAnimStatus();
   updateSurvivalOdds();
 }
 
@@ -1555,37 +1553,63 @@ function endTurn() {
   const threshold = getMoveThreshold(G.turn);
   addLog(`--- Turn ${G.turn} roll phase (move on 1–${threshold}) ---`, '');
 
+  // Determine which animatronics are frozen by camera this turn
+  function isFrozen(anim) {
+    if (!G.watchedCorridor) return false;
+    if (G.watchedCorridor === 'west') return anim === 'bonnie';
+    if (G.watchedCorridor === 'east') {
+      if (anim === 'chica') return true;
+      if (anim === 'freddy') return G.fredFreeze; // false if night mod overrides
+      return false;
+    }
+    if (G.watchedCorridor === 'dining') {
+      // Freeze any animatronic currently in stage or dining
+      const roomId = PATHS[anim][G.positions[anim]];
+      return ['stage','dining'].includes(roomId);
+    }
+    return false;
+  }
+
   let stop = false;
   ['bonnie','chica','freddy'].forEach(anim => {
     if (stop) return;
     const adjThresh = getAdjustedThreshold(anim, G.turn);
-    if (anim === 'freddy' && G.fredFreeze) {
-      addLog(`Freddy: FROZEN by East camera.`, 'info');
-      return;
-    }
-    const r = roll();
+    const frozen = isFrozen(anim);
     const path = PATHS[anim];
     const currentPos = G.positions[anim];
     const p = G.personalities[anim];
     const erraticRoll = (p === 'erratic') ? roll() : null;
 
+    const r = roll();
     let effectiveRoll = r;
     if (p === 'erratic') {
       effectiveRoll = G.turn % 2 === 1 ? Math.max(r, erraticRoll) : Math.min(r, erraticRoll);
     }
 
-    const finalMoved = effectiveRoll <= adjThresh;
+    const wouldHaveMoved = effectiveRoll <= adjThresh && currentPos < path.length - 1;
 
-    if (finalMoved && currentPos < path.length - 1) {
+    if (frozen) {
+      if (wouldHaveMoved) {
+        // Intercept! Personality is revealed as a consequence of the freeze landing on a move
+        if (!G.revealedPersonalities[anim]) {
+          G.revealedPersonalities[anim] = true;
+          const personalityTag = p === 'erratic' ? ` (erratic: ${r},${erraticRoll})` : '';
+          addLog(`${anim.charAt(0).toUpperCase()+anim.slice(1)}: rolled ${effectiveRoll}${personalityTag} → would have moved but FROZEN by camera. Personality revealed: ${p.toUpperCase()}!`, 'success');
+        } else {
+          const personalityTag = p === 'erratic' ? ` (erratic: ${r},${erraticRoll})` : '';
+          addLog(`${anim.charAt(0).toUpperCase()+anim.slice(1)}: rolled ${effectiveRoll}${personalityTag} → would have moved but FROZEN by camera. [${p.toUpperCase()} — already known]`, 'info');
+        }
+      } else {
+        addLog(`${anim.charAt(0).toUpperCase()+anim.slice(1)}: rolled ${effectiveRoll} → frozen by camera but wouldn't have moved anyway.`, 'info');
+      }
+      return; // frozen = no movement regardless
+    }
+
+    if (wouldHaveMoved) {
       G.positions[anim]++;
       const newRoom = path[G.positions[anim]];
-      G.knownPositions[anim] = null;
       const personalityTag = p === 'erratic' ? ` (erratic: ${r},${erraticRoll})` : (p === 'aggressive' ? ' +AGRO' : (p === 'cautious' ? ' +CAUT' : ''));
       addLog(`${anim.charAt(0).toUpperCase()+anim.slice(1)}: rolled ${effectiveRoll}${personalityTag} → moved to ${ROOM_NAMES[newRoom]}`, 'warning');
-
-      if (!G.revealedPersonalities[anim] && G.turn >= 3) {
-        G.revealedPersonalities[anim] = true;
-      }
 
       if (newRoom === 'left-door' || newRoom === 'right-door') {
         const doorSide = newRoom === 'left-door' ? 'left' : 'right';
@@ -1599,7 +1623,8 @@ function endTurn() {
         }
       }
     } else {
-      addLog(`${anim.charAt(0).toUpperCase()+anim.slice(1)}: rolled ${effectiveRoll} → stays at ${ROOM_NAMES[path[currentPos]]}`, '');
+      const personalityTag = p === 'erratic' ? ` (erratic: ${r},${erraticRoll})` : '';
+      addLog(`${anim.charAt(0).toUpperCase()+anim.slice(1)}: rolled ${effectiveRoll}${personalityTag} → stays at ${ROOM_NAMES[path[currentPos]]}`, '');
     }
   });
 
